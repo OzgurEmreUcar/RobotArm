@@ -1,4 +1,8 @@
-# WE-R24 Six-Axis Robot Arm
+# 3D Printed 6-Axis Robot Arm
+
+![Robot Arm](Assets/RobotArm.jpg)
+
+![Hardware Diagram](Assets/HardwareDiagram.png)
 
 This repository contains the software, CAD modifications, and documentation for a 3D-printed 6-axis robot arm based on LoboCNC's original design.
 
