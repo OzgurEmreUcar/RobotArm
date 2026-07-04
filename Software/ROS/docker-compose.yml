@@ -1,0 +1,45 @@
+x-common: &common
+  image: ros2_dev:latest
+  network_mode: host
+  ipc: host
+  privileged: true
+  environment:
+    - DISPLAY=${DISPLAY}
+    - QT_X11_NO_MITSHM=1
+    - XAUTHORITY=${XAUTHORITY}
+  volumes:
+    - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    - ${XAUTHORITY}:${XAUTHORITY}:rw
+    - ./home:/home:rw
+  stdin_open: true
+  tty: true
+  working_dir: /home
+
+services:
+  ros2_dev:
+    <<: *common
+    container_name: ros2_humble_container
+    profiles: ["cpu"]
+
+  ros2_dev_nvidia:
+    <<: *common
+    container_name: ros2_humble_container_nvidia
+    profiles: ["nvidia"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  ros2_dev_amd:
+    <<: *common
+    container_name: ros2_humble_container_amd
+    profiles: ["amd"]
+    devices:
+      - "/dev/kfd:/dev/kfd"
+      - "/dev/dri:/dev/dri"
+    group_add:
+      - video
+      - render
