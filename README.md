@@ -47,9 +47,9 @@ Follow these steps to set up the software environment and run the ROS 2 launch f
 Depending on your operating system, use the appropriate package manager to install Docker.
 
 **For Debian/Ubuntu-based systems:**
+
 ```bash
-sudo apt update
-sudo apt install docker.io docker-compose-v2
+sudo apt update && sudo apt install -y docker.io docker-compose-v2
 ```
 
 **For Arch-based systems (like CachyOS, Manjaro, EndeavourOS):**
@@ -58,10 +58,14 @@ sudo pacman -Sy docker docker-compose
 ```
 
 **(Optional but recommended) Allow your user to run Docker commands without sudo, and start the service:**
+
+Add your user to the docker group and start the service:
 ```bash
-sudo usermod -aG docker $USER
+sudo usermod -aG docker $USER && sudo systemctl enable --now docker
+```
+Apply the new group membership (in your current terminal):
+```bash
 newgrp docker
-sudo systemctl enable --now docker
 ```
 *(Note: `enable --now` configures Docker to start automatically on every boot. If you prefer to start it manually only when you need it, use `sudo systemctl start docker` instead.)*
 
@@ -69,27 +73,28 @@ sudo systemctl enable --now docker
 
 Navigate to the ROS directory and build the Docker image:
 
+Navigate to the ROS directory and build the Docker image:
 ```bash
-# Navigate to the ROS directory
-cd Software/ROS
-
-# Build the Docker image
-docker build -t ros2_dev:latest .
+cd Software/ROS && docker build -t ros2_dev:latest .
 ```
 
 Start the container and enter the interactive shell using `docker compose run`. The `--rm` flag ensures the container is automatically removed when you exit, keeping your system clean. Choose the command depending on your hardware:
 
 *(Note: On some systems like CachyOS or those using Wayland, GUI applications may work out-of-the-box. If you encounter display issues with applications like RViz not opening, you may need to allow Docker access to your X server by running `xhost +local:root` on your host machine before starting the container.)*
 
+**For standard CPU:**
 ```bash
-# For standard CPU
 docker compose --profile cpu run --rm ros2_dev
+```
 
-# OR, if you have an NVIDIA GPU (requires nvidia-container-toolkit)
-# docker compose --profile nvidia run --rm ros2_dev_nvidia
+**OR, if you have an NVIDIA GPU** (requires nvidia-container-toolkit):
+```bash
+docker compose --profile nvidia run --rm ros2_dev_nvidia
+```
 
-# OR, for AMD GPUs
-# docker compose --profile amd run --rm ros2_dev_amd
+**OR, for AMD GPUs:**
+```bash
+docker compose --profile amd run --rm ros2_dev_amd
 ```
 
 ### 3. Launch the Robot Arm
@@ -97,12 +102,5 @@ docker compose --profile cpu run --rm ros2_dev
 Once inside the container's shell, build the workspace and launch the robot:
 
 ```bash
-# Build the workspace (if not already built)
-colcon build
-
-# Source the setup script
-source install/setup.bash
-
-# Run the launch file
-ros2 launch robot_moveit_config robot_arm.launch.py
+colcon build && source install/setup.bash && ros2 launch robot_moveit_config robot_arm.launch.py
 ```
