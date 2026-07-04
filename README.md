@@ -72,8 +72,6 @@ newgrp docker
 ### 2. Build and Run the Docker Container
 
 Navigate to the ROS directory and build the Docker image:
-
-Navigate to the ROS directory and build the Docker image:
 ```bash
 cd Software/ROS && docker build -t ros2_dev:latest .
 ```
