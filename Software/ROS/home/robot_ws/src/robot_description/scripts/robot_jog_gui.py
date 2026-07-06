@@ -7,6 +7,11 @@ import time
 import threading
 import json
 import os
+import rclpy
+from rcl_interfaces.srv import SetParameters
+from rcl_interfaces.msg import Parameter as ParameterMsg
+from rcl_interfaces.msg import ParameterValue
+from rcl_interfaces.msg import ParameterType
 
 # --- AYARLAR ---
 BAUD_RATE = 115200
@@ -41,6 +46,17 @@ class RobotJogApp:
         self.is_pressing = False
         self.active_joint = 0
         self.active_direction = 0  
+        
+        # ROS 2 node setup for remote parameter setting
+        if not rclpy.ok():
+            rclpy.init(args=None)
+        self.ros_node = rclpy.create_node('robot_jog_gui_node')
+        
+        # NOTE: robot_arm.launch.py overrides the node name to "trajectory_driver_node"
+        self.param_client = self.ros_node.create_client(SetParameters, '/trajectory_driver_node/set_parameters')
+        
+        self.ros_thread = threading.Thread(target=self._spin_ros, daemon=True)
+        self.ros_thread.start()
         
         # Robotun genel güç durumu (True: Kilitli/Enerjili, False: Serbest)
         self.robot_is_enabled = True
@@ -135,6 +151,32 @@ class RobotJogApp:
             ports.append(self.port_var.get())
         self.port_cb['values'] = ports
 
+    def _spin_ros(self):
+        while rclpy.ok():
+            rclpy.spin_once(self.ros_node, timeout_sec=0.1)
+
+    def update_remote_parameter(self, port):
+        self.ros_node.get_logger().info(f"[JOG GUI] Parametre guncelleme istegi baslatiliyor... Hedef port: {port}")
+        if self.param_client.wait_for_service(timeout_sec=2.0):
+            req = SetParameters.Request()
+            val = ParameterValue(type=ParameterType.PARAMETER_STRING, string_value=port)
+            req.parameters = [ParameterMsg(name='serial_port', value=val)]
+            future = self.param_client.call_async(req)
+            
+            def future_cb(f):
+                try:
+                    res = f.result()
+                    success = res.results[0].successful
+                    reason = res.results[0].reason
+                    self.ros_node.get_logger().info(f"[JOG GUI] Parametre guncelleme sonucu: Basarili={success}, Sebep='{reason}'")
+                except Exception as e:
+                    self.ros_node.get_logger().error(f"[JOG GUI] Parametre guncelleme sirasinda hata olustu: {e}")
+                    
+            future.add_done_callback(future_cb)
+            self.ros_node.get_logger().info(f"[JOG GUI] trajectory_driver_node dugumune '{port}' istegi gonderildi, yanit bekleniyor...")
+        else:
+            self.ros_node.get_logger().error("[JOG GUI] HATA: /trajectory_driver_node/set_parameters servisi 2 saniye icinde bulunamadi! Dugum baslamamis olabilir.")
+
     def connect_serial_thread(self):
         threading.Thread(target=self.connect_serial, daemon=True).start()
 
@@ -148,6 +190,9 @@ class RobotJogApp:
             
         port = self.port_var.get()
         save_serial_port(port) # Seçimi kaydet
+        
+        # Ana node'un (trajectory_driver) portunu uzaktan güncelle
+        self.update_remote_parameter(port)
         
         self.lbl_conn_status.config(text="Bağlanıyor...", fg="orange")
         
@@ -231,11 +276,16 @@ class RobotJogApp:
             time.sleep(SEND_INTERVAL_MS / 1000.0)
 
 def main():
+    if not rclpy.ok():
+        rclpy.init(args=None)
     root = tk.Tk()
     app = RobotJogApp(root)
     root.mainloop()
     if app.ser:
         app.ser.close()
+    
+    if rclpy.ok():
+        rclpy.shutdown()
 
 if __name__ == "__main__":
     main()

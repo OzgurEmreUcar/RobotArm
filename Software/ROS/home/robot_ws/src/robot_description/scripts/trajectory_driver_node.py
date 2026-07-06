@@ -25,6 +25,7 @@ from std_srvs.srv import Trigger
 from control_msgs.action import FollowJointTrajectory
 from sensor_msgs.msg import JointState
 from moveit_msgs.msg import DisplayTrajectory
+from rcl_interfaces.msg import SetParametersResult
 
 from constants import JOINT_NAMES, SCALES, SERIAL_BAUD, SERIAL_PORT
 from serial_bridge import SerialBridge
@@ -47,6 +48,10 @@ class TrajectoryDriver(Node):
         self._trajectory_done_event = threading.Event()
         self._target_segments = 0
         self._segments_finished = 0
+
+        # Declare the serial port parameter and listen for updates
+        self.declare_parameter('serial_port', SERIAL_PORT)
+        self.add_on_set_parameters_callback(self._on_parameter_event)
 
         # Serial bridge owns all low-level I/O with the Arduino.
         self.bridge = SerialBridge(self.get_logger(), self._cancel_flag)
@@ -77,9 +82,35 @@ class TrajectoryDriver(Node):
 
         # Start the serial bridge's background threads and connection attempt.
         self.bridge.start()
-        self.bridge.connect_async(SERIAL_PORT, SERIAL_BAUD)
+        
+        initial_port = self.get_parameter('serial_port').get_parameter_value().string_value
+        self.bridge.connect_async(initial_port, SERIAL_BAUD)
 
         self.get_logger().info('TrajectoryDriver v9.4 ready. Lightweight timing comparison active.')
+
+    # ------------------------------------------------------------------ #
+    # Parameter Callbacks
+    # ------------------------------------------------------------------ #
+    def _on_parameter_event(self, params):
+        """Invoked when a ROS parameter is updated dynamically."""
+        self.get_logger().info(f"[TRAJECTORY DRIVER] Parameter update requested: {[p.name for p in params]}")
+        for param in params:
+            if param.name == 'serial_port' and param.type_ == param.Type.STRING:
+                new_port = param.value
+                self.get_logger().info(f"[TRAJECTORY DRIVER] 'serial_port' parameter updated to '{new_port}'. Reconnecting...")
+
+                # Close the old connection and reconnect
+                try:
+                    self.bridge.close()
+                    self.get_logger().info("[TRAJECTORY DRIVER] Old connection closed.")
+                except Exception as e:
+                    self.get_logger().error(f"[TRAJECTORY DRIVER] Error occurred while closing old connection: {e}")
+
+                self.bridge.ser = None # Reset the old connection object
+                self.bridge.connect_async(new_port, SERIAL_BAUD)
+                self.get_logger().info("[TRAJECTORY DRIVER] New connection request initiated.")
+                
+        return SetParametersResult(successful=True, reason="Port updated and connection re-established.")
 
     # ------------------------------------------------------------------ #
     # Serial bridge callbacks (called from the reader thread)
