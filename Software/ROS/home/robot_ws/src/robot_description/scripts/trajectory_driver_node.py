@@ -216,7 +216,6 @@ class TrajectoryDriver(Node):
             return result
 
         self._target_segments = len(points) - 1
-        self._trajectory_done_event.clear()
 
         # ---- [TIMING - INPUT] Total planned duration from MoveIt ----
         t_first = points[0].time_from_start.sec + points[0].time_from_start.nanosec / 1e9
