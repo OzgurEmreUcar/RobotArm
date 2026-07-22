@@ -21,7 +21,7 @@ My YouTube channel, where you can watch the build process and future projects in
 
 | Item | Quantity |
 | :--- | :--- |
-| Nema 17HS4401 Stepper Motor| 3 |
+| Nema 17HS4401 (42-40) Stepper Motor| 3 |
 | 35BYJ412 Stepper Motor| 3 |
 | DRV8825 | 3 |
 | ULN2003A | 3 |
