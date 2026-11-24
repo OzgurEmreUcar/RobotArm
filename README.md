@@ -29,6 +29,7 @@ My YouTube channel, where you can watch the build process and future projects in
 | Reprap Ramps 1.6 Plus | 1 |
 | 12V 20A Power Supply | 1 |
 | 6mm Steel Ball | - |
+| Silicone Grease | - |
 
 ## Project Structure
 
